@@ -51,6 +51,6 @@ jobs:
           docker pull ${{ secrets.ECR_BACKEND_REPO }}:latest
           docker pull ${{ secrets.ECR_FRONTEND_REPO }}:latest
           
-          cd /home/ec2-user
+          cd /home/ec2-user/DevOps-Assessment
           docker compose down
           docker compose up -d
