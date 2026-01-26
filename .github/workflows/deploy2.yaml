@@ -27,13 +27,13 @@ jobs:
 
     - name: Build Backend Image
       run: |
-        docker build -t backend ./backend
+        docker build -t backend -f backend/Dockerfile .
         docker tag backend:latest ${{ secrets.ECR_BACKEND_REPO }}:latest
         docker push ${{ secrets.ECR_BACKEND_REPO }}:latest
 
     - name: Build Frontend Image
       run: |
-        docker build -t frontend ./frontend
+        docker build -t frontend -f frontend/Dockerfile .
         docker tag frontend:latest ${{ secrets.ECR_FRONTEND_REPO }}:latest
         docker push ${{ secrets.ECR_FRONTEND_REPO }}:latest
 
