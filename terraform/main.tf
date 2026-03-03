@@ -62,7 +62,7 @@ resource "aws_iam_instance_profile" "ec2_profile" {
 # EC2 Instance
 # -------------------------
 resource "aws_instance" "app_server" {
-  ami           = "ami-xxxxxxxx"   # apne region ka Ubuntu AMI daalna
+  ami           = "ami-002dc43e5c8f29c3e"   # apne region ka Ubuntu AMI daalna
   instance_type = "t2.micro"
 
   security_groups = [aws_security_group.app_sg.name]
