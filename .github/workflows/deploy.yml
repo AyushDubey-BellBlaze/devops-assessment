@@ -1,4 +1,4 @@
-name: Deploy Infrastructure
+name: DevOps Full CI-CD Pipeline
 
 on:
   push:
@@ -6,26 +6,106 @@ on:
       - main
 
 jobs:
-  terraform:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+    # ===============================
+    # Checkout Code
+    # ===============================
+    - name: Checkout Code
+      uses: actions/checkout@v4
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+    # ===============================
+    # Configure AWS Credentials
+    # ===============================
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Terraform Init
-        run: |
-          cd terraform
-          terraform init
+    # ===============================
+    # Login to ECR
+    # ===============================
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Terraform Apply
-        run: |
-          cd terraform
-          terraform apply -auto-approve
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: ap-south-1
+    # ===============================
+    # Build & Push Backend
+    # ===============================
+    - name: Build & Push Backend
+      run: |
+        docker build -t backend ./backend
+        docker tag backend:latest ${{ steps.login-ecr.outputs.registry }}/backend:${{ github.sha }}
+        docker push ${{ steps.login-ecr.outputs.registry }}/backend:${{ github.sha }}
+
+    # ===============================
+    # Build & Push Frontend
+    # ===============================
+    - name: Build & Push Frontend
+      run: |
+        docker build -t frontend ./frontend
+        docker tag frontend:latest ${{ steps.login-ecr.outputs.registry }}/frontend:${{ github.sha }}
+        docker push ${{ steps.login-ecr.outputs.registry }}/frontend:${{ github.sha }}
+
+    # ===============================
+    # Setup Terraform
+    # ===============================
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+
+    - name: Terraform Init
+      run: terraform init
+      working-directory: terraform
+
+    - name: Terraform Validate
+      run: terraform validate
+      working-directory: terraform
+
+    - name: Terraform Plan
+      run: terraform plan
+      working-directory: terraform
+
+    - name: Terraform Apply
+      run: terraform apply -auto-approve
+      working-directory: terraform
+
+    # ===============================
+    # Get EC2 Public IP
+    # ===============================
+    - name: Get EC2 Public IP
+      run: |
+        echo "EC2_IP=$(terraform output -raw ec2_public_ip)" >> $GITHUB_ENV
+      working-directory: terraform
+
+    # ===============================
+    # Deploy to EC2
+    # ===============================
+    - name: Deploy to EC2
+      run: |
+        echo "${{ secrets.EC2_SSH_KEY }}" > key.pem
+        chmod 400 key.pem
+
+        ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@$EC2_IP << EOF
+
+        aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | \
+        docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
+
+        docker pull ${{ steps.login-ecr.outputs.registry }}/backend:${{ github.sha }}
+        docker pull ${{ steps.login-ecr.outputs.registry }}/frontend:${{ github.sha }}
+
+        docker stop backend || true
+        docker stop frontend || true
+        docker rm backend || true
+        docker rm frontend || true
+
+        docker run -d -p 8000:8000 --name backend \
+        ${{ steps.login-ecr.outputs.registry }}/backend:${{ github.sha }}
+
+        docker run -d -p 80:80 --name frontend \
+        ${{ steps.login-ecr.outputs.registry }}/frontend:${{ github.sha }}
+
+        EOF

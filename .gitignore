@@ -1,11 +1,11 @@
-# Terraform
-.terraform/
-terraform.tfstate
-terraform.tfstate.backup
-*.tfstate
-*.tfstate.*
-crash.log
+# Terraform files
+terraform/.terraform/
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+terraform/.terraform.lock.hcl
 
-# Sensitive files
+# Node modules
+node_modules/
+
+# PEM files
 *.pem
-.env
