@@ -147,3 +147,31 @@ resource "aws_ecr_repository" "frontend_repo" {
     prevent_destroy = false
   }
 } */
+
+resource "aws_ecr_repository" "backend_repo" {
+  name = "devops-backend"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+
+  image_tag_mutability = "MUTABLE"
+
+  force_delete = true
+}
+
+############################################
+# ECR - Frontend Repository
+############################################
+
+resource "aws_ecr_repository" "frontend_repo" {
+  name = "devops-frontend"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+
+  image_tag_mutability = "MUTABLE"
+
+  force_delete = true
+}
