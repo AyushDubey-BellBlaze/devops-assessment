@@ -39,8 +39,8 @@ jobs:
     - name: Build & Push Backend
       run: |
         docker build -t backend ./backend
-        docker tag backend:latest ${{ steps.login-ecr.outputs.registry }}/backend:${{ github.sha }}
-        docker push ${{ steps.login-ecr.outputs.registry }}/backend:${{ github.sha }}
+        docker tag backend:latest ${{ steps.login-ecr.outputs.registry }}/devops-backend:${{ github.sha }}
+        docker push ${{ steps.login-ecr.outputs.registry }}/devops-backend:${{ github.sha }}
 
     # ===============================
     # Build & Push Frontend
@@ -48,8 +48,8 @@ jobs:
     - name: Build & Push Frontend
       run: |
         docker build -t frontend ./frontend
-        docker tag frontend:latest ${{ steps.login-ecr.outputs.registry }}/frontend:${{ github.sha }}
-        docker push ${{ steps.login-ecr.outputs.registry }}/frontend:${{ github.sha }}
+        docker tag frontend:latest ${{ steps.login-ecr.outputs.registry }}/devops-frontend:${{ github.sha }}
+        docker push ${{ steps.login-ecr.outputs.registry }}/devops-frontend:${{ github.sha }}
 
     # ===============================
     # Setup Terraform
@@ -94,8 +94,8 @@ jobs:
         aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | \
         docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
 
-        docker pull ${{ steps.login-ecr.outputs.registry }}/backend:${{ github.sha }}
-        docker pull ${{ steps.login-ecr.outputs.registry }}/frontend:${{ github.sha }}
+        docker pull ${{ steps.login-ecr.outputs.registry }}/devops-backend:${{ github.sha }}
+        docker pull ${{ steps.login-ecr.outputs.registry }}/devops-frontend:${{ github.sha }}
 
         docker stop backend || true
         docker stop frontend || true
@@ -103,9 +103,9 @@ jobs:
         docker rm frontend || true
 
         docker run -d -p 8000:8000 --name backend \
-        ${{ steps.login-ecr.outputs.registry }}/backend:${{ github.sha }}
+        ${{ steps.login-ecr.outputs.registry }}/devops-backend:${{ github.sha }}
 
         docker run -d -p 80:80 --name frontend \
-        ${{ steps.login-ecr.outputs.registry }}/frontend:${{ github.sha }}
+        ${{ steps.login-ecr.outputs.registry }}/devops-frontend:${{ github.sha }}
 
         EOF
