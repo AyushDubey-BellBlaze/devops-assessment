@@ -15,7 +15,7 @@ data "aws_ami" "amazon_linux" {
 ############################################
 # SECURITY GROUP
 ############################################
-
+/*
 resource "aws_security_group" "app_sg" {
   name        = "devops-app-sg"
   description = "Allow HTTP, HTTPS and SSH"
@@ -47,7 +47,11 @@ resource "aws_security_group" "app_sg" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
-}
+
+  lifecycle {
+    create_before_destroy = true
+  }
+} */
 
 ############################################
 # IAM ROLE FOR EC2 (ECR ACCESS)
@@ -111,7 +115,7 @@ resource "aws_instance" "app_server" {
 ############################################
 # ECR - Backend Repository
 ############################################
-
+/*
 resource "aws_ecr_repository" "backend_repo" {
   name = "devops-backend"
 
@@ -120,6 +124,10 @@ resource "aws_ecr_repository" "backend_repo" {
   }
 
   image_tag_mutability = "MUTABLE"
+
+  lifecycle {
+    prevent_destroy = false
+  }
 }
 
 ############################################
@@ -134,4 +142,8 @@ resource "aws_ecr_repository" "frontend_repo" {
   }
 
   image_tag_mutability = "MUTABLE"
-}
+
+  lifecycle {
+    prevent_destroy = false
+  }
+} */

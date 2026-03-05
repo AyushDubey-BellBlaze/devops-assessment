@@ -31,6 +31,13 @@ jobs:
         working-directory: terraform
         run: terraform init
 
+      - name: Import existing resources
+        working-directory: terraform
+        run: |
+          terraform import aws_ecr_repository.backend_repo devops-backend 2>/dev/null || true
+          terraform import aws_ecr_repository.frontend_repo devops-frontend 2>/dev/null || true
+        continue-on-error: true
+
       - name: Terraform Apply
         working-directory: terraform
         run: terraform apply -auto-approve
