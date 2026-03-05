@@ -34,6 +34,9 @@ jobs:
       - name: Import existing resources
         working-directory: terraform
         run: |
+          terraform import aws_security_group.app_sg $(aws ec2 describe-security-groups --filters "Name=group-name,Values=devops-app-sg" --query "SecurityGroups[0].GroupId" --output text) 2>/dev/null || true
+          terraform import aws_iam_role.ec2_role devops-ec2-ecr-role 2>/dev/null || true
+          terraform import aws_iam_instance_profile.ec2_profile devops-ec2-instance-profile 2>/dev/null || true
           terraform import aws_ecr_repository.backend_repo devops-backend 2>/dev/null || true
           terraform import aws_ecr_repository.frontend_repo devops-frontend 2>/dev/null || true
         continue-on-error: true
@@ -78,25 +81,26 @@ jobs:
       # ===============================
       # Deploy to EC2
       # ===============================
-      - name: Deploy to EC2
-        run: |
-          echo "${{ secrets.EC2_SSH_KEY }}" > key.pem
-          chmod 400 key.pem
+      - name: SSH into EC2 and deploy Angular app
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+          script: |
+            aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
 
-          ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@$EC2_IP << EOF
-          aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
+            docker pull ${{ steps.login-ecr.outputs.registry }}/devops-backend:${{ github.sha }}
+            docker pull ${{ steps.login-ecr.outputs.registry }}/devops-frontend:${{ github.sha }}
 
-          docker pull ${{ steps.login-ecr.outputs.registry }}/devops-backend:${{ github.sha }}
-          docker pull ${{ steps.login-ecr.outputs.registry }}/devops-frontend:${{ github.sha }}
+            docker stop backend || true
+            docker rm backend || true
+            docker stop frontend || true
+            docker rm frontend || true
 
-          docker stop backend || true
-          docker rm backend || true
-          docker stop frontend || true
-          docker rm frontend || true
+            docker run -d -p 8000:8000 --name backend \
+            ${{ steps.login-ecr.outputs.registry }}/devops-backend:${{ github.sha }}
 
-          docker run -d -p 8000:8000 --name backend \
-          ${{ steps.login-ecr.outputs.registry }}/devops-backend:${{ github.sha }}
-
-          docker run -d -p 80:80 --name frontend \
-          ${{ steps.login-ecr.outputs.registry }}/devops-frontend:${{ github.sha }}
-          EOF
+            docker run -d -p 80:80 --name frontend \
+            ${{ steps.login-ecr.outputs.registry }}/devops-frontend:${{ github.sha }}
+            EOF
