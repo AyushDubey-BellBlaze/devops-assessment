@@ -15,7 +15,7 @@ data "aws_ami" "amazon_linux" {
 ############################################
 # SECURITY GROUP
 ############################################
-/*
+
 resource "aws_security_group" "app_sg" {
   name        = "devops-app-sg"
   description = "Allow HTTP, HTTPS and SSH"
@@ -41,22 +41,25 @@ resource "aws_security_group" "app_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  ingress {
+    from_port   = 8000
+    to_port     = 8000
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
-
-  lifecycle {
-    create_before_destroy = true
-  }
-} */
+}
 
 ############################################
 # IAM ROLE FOR EC2 (ECR ACCESS)
 ############################################
-/*
+
 resource "aws_iam_role" "ec2_role" {
   name = "devops-ec2-ecr-role"
 
@@ -75,12 +78,12 @@ resource "aws_iam_role" "ec2_role" {
 resource "aws_iam_role_policy_attachment" "ecr_readonly" {
   role       = aws_iam_role.ec2_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
-} 
+}
 
 resource "aws_iam_instance_profile" "ec2_profile" {
   name = "devops-ec2-instance-profile"
   role = aws_iam_role.ec2_role.name
-} */
+}
 
 ############################################
 # EC2 INSTANCE
@@ -90,8 +93,8 @@ resource "aws_instance" "app_server" {
   ami                         = data.aws_ami.amazon_linux.id
   instance_type               = var.instance_type
   key_name                    = var.key_pair_name
- # vpc_security_group_ids      = [aws_security_group.app_sg.id]
- # iam_instance_profile        = aws_iam_instance_profile.ec2_profile.name
+  vpc_security_group_ids      = [aws_security_group.app_sg.id]
+  iam_instance_profile        = aws_iam_instance_profile.ec2_profile.name
   associate_public_ip_address = true
 
   user_data = <<-EOF
@@ -115,38 +118,6 @@ resource "aws_instance" "app_server" {
 ############################################
 # ECR - Backend Repository
 ############################################
-/*
-resource "aws_ecr_repository" "backend_repo" {
-  name = "devops-backend"
-
-  image_scanning_configuration {
-    scan_on_push = true
-  }
-
-  image_tag_mutability = "MUTABLE"
-
-  lifecycle {
-    prevent_destroy = false
-  }
-}
-
-############################################
-# ECR - Frontend Repository
-############################################
-
-resource "aws_ecr_repository" "frontend_repo" {
-  name = "devops-frontend"
-
-  image_scanning_configuration {
-    scan_on_push = true
-  }
-
-  image_tag_mutability = "MUTABLE"
-
-  lifecycle {
-    prevent_destroy = false
-  }
-} */
 
 resource "aws_ecr_repository" "backend_repo" {
   name = "devops-backend"
@@ -156,7 +127,6 @@ resource "aws_ecr_repository" "backend_repo" {
   }
 
   image_tag_mutability = "MUTABLE"
-
   force_delete = true
 }
 
@@ -172,6 +142,5 @@ resource "aws_ecr_repository" "frontend_repo" {
   }
 
   image_tag_mutability = "MUTABLE"
-
   force_delete = true
 }
